@@ -10,11 +10,13 @@
     "mongo-stop": "docker rm -f mongo-dev"
   },
   "dependencies": {
+    "@line/bot-sdk": "^9.2.0",
     "@prisma/client": "^3.14.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
-    "dotenv": "^16.0.1",
+    "dotenv": "^16.4.5",
     "express": "~4.16.1",
+    "mongodb": "^6.5.0",
     "morgan": "~1.9.1",
     "prisma": "^3.14.0",
     "sanitize-html": "^2.7.0"
