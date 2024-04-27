@@ -33,7 +33,7 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
-app.post("/", line.middleware(config), (req, res) => {
+app.post("/webhook", line.middleware(config), (req, res) => {
   Promise.all([req.body.events.map(handleEvents)]).then((result) =>
     res.json(result)
   );
