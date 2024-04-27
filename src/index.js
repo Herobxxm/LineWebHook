@@ -7,6 +7,7 @@ require("dotenv").config();
 const app = express();
 
 app.use(logger("dev"));
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
@@ -33,8 +34,7 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
-app.post("/webhook", line.middleware(config), (req, res) => {
-  console.log("req.body:", req.body);
+app.post("/", line.middleware(config), (req, res) => {
   Promise.all([req.body.events.map(handleEvents)]).then((result) =>
     res.json(result)
   );
@@ -79,6 +79,7 @@ function saveUserData(profile) {
 
 app.use((err, req, res, next) => {
   if (err instanceof line.SignatureValidationFailed) {
+    console.error(err);
     res.status(401).send(err.signature);
     return;
   } else if (err instanceof line.JSONParseError) {
