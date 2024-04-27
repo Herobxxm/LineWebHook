@@ -26,12 +26,12 @@ const client = new MongoClient(process.env.MONGODB_URI, {
     }
   });
 
-  app.get('/', (req, res) => {
+app.get('/', (req, res) => {
     console.log('Hello World')
     res.send('Hello World')
 })
 
-app.post('/webhook', line.middleware(config), (req, res) => {
+app.post('/', line.middleware(config), (req, res) => {
     console.log('req.body:', req.body);
     Promise
         .all([
