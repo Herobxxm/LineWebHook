@@ -60,16 +60,13 @@ function saveUserData(profile) {
     .then(() => {
       const database = client.db("UserData");
       const collection = database.collection("users");
-      collection
-        .insertOne(profile)
-        .then((result) => {
-          console.log("result:", result);
-          client.close();
-        })
-        .catch((error) => {
-          console.error("error:", error);
-          client.close();
-        });
+      // check if user exists
+      return collection.findOne({ userId: profile.userId }).then((user) => {
+        if (!user) {
+          // insert user
+          return collection.insertOne(profile);
+        }
+      });
     })
     .catch((error) => {
       console.error("error:", error);
