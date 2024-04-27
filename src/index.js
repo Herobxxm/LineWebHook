@@ -1,89 +1,93 @@
-require('dotenv').config();
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const logger = require("morgan");
 
-/**
- * Module dependencies.
- */
+require("dotenv").config();
 
-const app = require('./app');
-const http = require('http');
+const app = express();
 
-/**
- * Get port from environment and store in Express.
- */
+app.use(logger("dev"));
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
-const port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+const { MongoClient, ServerApiVersion } = require("mongodb");
+const client = new MongoClient(process.env.MONGODB_URI, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
 
-/**
- * Create HTTP server.
- */
+const config = {
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.CHANNEL_SECRET,
+};
+const line = require("@line/bot-sdk");
+const lineClient = new line.Client({
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+});
 
-const server = http.createServer(app);
+app.get("/", (req, res) => {
+  console.log("Hello World");
+  res.send("Hello World");
+});
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+app.post("/webhook", line.middleware(config), (req, res) => {
+  console.log("req.body:", req.body);
+  Promise.all([req.body.events.map(handleEvents)]).then((result) =>
+    res.json(result)
+  );
+});
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
-
-/**
- * Normalize a port into a number, string, or false.
- */
-
-function normalizePort(val) {
-  const port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
-  return false;
-}
-
-/**
- * Event listener for HTTP server "error" event.
- */
-
-function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-
-  const bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
-
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
+async function handleEvents(event) {
+  console.log("event:", event);
+  // check type of event
+  if (event.type === "follow") {
+    const userId = event.source.userId;
+    try {
+      const profile = await lineClient.getProfile(userId);
+      console.log("profile:", profile);
+      saveUserData(profile);
+    } catch (error) {
+      console.error("error:", "Can not save profile");
+    }
   }
 }
 
-/**
- * Event listener for HTTP server "listening" event.
- */
-
-function onListening() {
-  const addr = server.address();
-  const bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  console.log('App started. Listening on ' + bind);
+function saveUserData(profile) {
+  return client
+    .connect()
+    .then(() => {
+      const database = client.db("UserData");
+      const collection = database.collection("users");
+      collection
+        .insertOne(profile)
+        .then((result) => {
+          console.log("result:", result);
+          client.close();
+        })
+        .catch((error) => {
+          console.error("error:", error);
+          client.close();
+        });
+    })
+    .catch((error) => {
+      console.error("error:", error);
+    });
 }
+
+app.use((err, req, res, next) => {
+  if (err instanceof line.SignatureValidationFailed) {
+    res.status(401).send(err.signature);
+    return;
+  } else if (err instanceof line.JSONParseError) {
+    res.status(400).send(err.raw);
+    return;
+  }
+  next(err); // will throw default 500
+});
+
+app.listen(3000, () => {
+  console.log("Server is running on port 3000");
+});
